@@ -40,14 +40,13 @@ function connect() {
             players = data.players;
             projectiles = data.projectiles;
             aoes = data.aoes;
+            // Обновляем кулдауны из состояния сервера
+            const me = players[myId];
+            if (me && me.cooldowns) {
+                cooldowns = me.cooldowns;
+            }
             updateUI();
             updateLeaderboard();
-            const me = getMe();
-            if (me && me.cooldowns) {
-                for (let key in cooldowns) {
-                    cooldowns[key] = me.cooldowns[key] || 0;
-                }
-            }
         }
     };
 
@@ -93,47 +92,38 @@ canvas.addEventListener('mousedown', (e) => {
     const clickY = Math.max(0, Math.min(H, y));
     
     if (e.button === 2) {
-        // ПКМ — движение
         moveTarget = { x: clickX, y: clickY };
     }
     
     if (e.button === 0) {
-        // ЛКМ — блинк (как в доте)
-        const me = getMe();
+        const me = players[myId];
         if (me && cooldowns.z <= 0 && !me.rearming) {
             send({ type: 'blink', x: clickX, y: clickY });
-            // Ставим локальный кулдаун для отображения
-            cooldowns.z = 14;
         }
     }
 });
 
 document.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
+    
     if (key === 'z') {
         e.preventDefault();
-        // Блинк по нажатию Z в направлении мыши
-        const me = getMe();
+        const me = players[myId];
         if (me && cooldowns.z <= 0 && !me.rearming) {
             send({ type: 'blink', x: mouseX, y: mouseY });
-            cooldowns.z = 14;
         }
         return;
     }
+    
     const skills = { q: 'q', w: 'w', e: 'e', r: 'r', x: 'x' };
     if (skills[key]) {
         e.preventDefault();
-        useSkill(key);
+        const me = players[myId];
+        if (me && cooldowns[key] <= 0 && !me.rearming) {
+            send({ type: 'skill', skill: key });
+        }
     }
 });
-
-function useSkill(skill) {
-    if (!myId) return;
-    if (cooldowns[skill] > 0) return;
-    const me = getMe();
-    if (me && me.rearming) return;
-    send({ type: 'skill', skill: skill });
-}
 
 function getMe() {
     return players[myId] || null;
@@ -200,13 +190,6 @@ function update() {
             send({ type: 'move', x: me.x, y: me.y, angle });
         }
     }
-
-    for (let key in cooldowns) {
-        if (cooldowns[key] > 0) {
-            cooldowns[key] -= 1/60;
-            if (cooldowns[key] < 0) cooldowns[key] = 0;
-        }
-    }
 }
 
 function drawCursor() {
@@ -243,7 +226,6 @@ function drawCursor() {
 function draw() {
     ctx.clearRect(0, 0, W, H);
 
-    // grid
     ctx.strokeStyle = '#18292e';
     ctx.lineWidth = 1;
     for (let i = 0; i < W; i += 60) {
@@ -259,7 +241,6 @@ function draw() {
         ctx.stroke();
     }
 
-    // aoes
     for (let aoe of aoes) {
         const grad = ctx.createRadialGradient(aoe.x, aoe.y, 10, aoe.x, aoe.y, aoe.radius);
         grad.addColorStop(0, 'rgba(120,220,255,0.25)');
@@ -278,7 +259,6 @@ function draw() {
         ctx.fillText('❄', aoe.x, aoe.y + 8);
     }
 
-    // projectiles
     for (let pr of projectiles) {
         if (pr.type === 'laser_beam') {
             ctx.shadowBlur = 30;
@@ -323,7 +303,6 @@ function draw() {
         ctx.shadowBlur = 0;
     }
 
-    // players
     for (let id in players) {
         const p = players[id];
         const isMine = id === myId;
