@@ -3,122 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tinker Arena Online</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #0a1215;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            font-family: 'Segoe UI', sans-serif;
-            color: #c8e2e8;
-        }
-        #menu {
-            background: #1b2b30;
-            padding: 40px;
-            border-radius: 30px;
-            border: 1px solid #3f636e;
-            text-align: center;
-            width: 350px;
-        }
-        #menu h1 {
-            color: #f5d742;
-            font-size: 28px;
-            margin-bottom: 15px;
-        }
-        #menu input {
-            width: 100%;
-            padding: 12px;
-            border-radius: 30px;
-            border: none;
-            background: #2a414a;
-            color: white;
-            font-size: 16px;
-            margin-bottom: 12px;
-            outline: 1px solid #4d717c;
-        }
-        #menu button {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 40px;
-            background: #f5d742;
-            color: #0a1215;
-            font-weight: 700;
-            font-size: 18px;
-            cursor: pointer;
-        }
-        #status {
-            margin-top: 12px;
-            font-size: 14px;
-            color: #b2d3dd;
-        }
-        #gameContainer {
-            display: none;
-        }
-        canvas {
-            border-radius: 20px;
-            border: 2px solid #2f545e;
-            background: #15282e;
-            cursor: none;
-        }
-        #ui {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-            width: 1000px;
-        }
-        #skillbar {
-            display: flex;
-            gap: 10px;
-            margin-top: 8px;
-        }
-        .skill {
-            background: #1e333b;
-            padding: 4px 14px;
-            border-radius: 20px;
-            border: 1px solid #3f636e;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .key { color: #f5d742; font-weight: 700; }
-        .cd { color: #f5a07a; font-size: 12px; }
-        @media (max-width: 1050px) {
-            canvas { width: 100%; height: auto; aspect-ratio: 1000/650; }
-            #ui, #skillbar { width: 100%; flex-wrap: wrap; }
-        }
-    </style>
+    <title>Tinker Arena</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<div id="menu">
-    <h1>⚙️ TINKER ARENA</h1>
-    <input type="text" id="nickInput" placeholder="Ваш ник..." value="Tinker">
-    <button id="playBtn">🎮 Играть</button>
-    <div id="status">Введите ник и нажмите Играть</div>
-</div>
-
-<div id="gameContainer">
-    <canvas id="arena" width="1000" height="650"></canvas>
-    <div id="ui">
-        <span id="myName">Вы</span>
-        <span id="myHp">100/100</span>
-        <span id="enemyName">Противник</span>
-        <span id="enemyHp">100/100</span>
+    <div id="menu">
+        <div class="menu-box">
+            <h1>TINKER ARENA</h1>
+            <p>Введи ник и жди подключения</p>
+            <input type="text" id="nickInput" placeholder="Ник" maxlength="16" value="Tinker">
+            <button id="playBtn">Войти</button>
+            <div id="status">Ожидание...</div>
+        </div>
     </div>
-    <div id="skillbar">
-        <div class="skill"><span class="key">Q</span> Лазер <span class="cd" id="cdQ">✔</span></div>
-        <div class="skill"><span class="key">W</span> Ракеты <span class="cd" id="cdW">✔</span></div>
-        <div class="skill"><span class="key">E</span> Матрица <span class="cd" id="cdE">✔</span></div>
-        <div class="skill"><span class="key">Z</span> Блинк <span class="cd" id="cdZ">✔</span></div>
-        <div class="skill"><span class="key">X</span> Шива <span class="cd" id="cdX">✔</span></div>
-    </div>
-</div>
 
-<script src="game.js"></script>
+    <div id="game" style="display:none;">
+        <div id="ui">
+            <div class="player-info">
+                <span id="myName">Вы</span>
+                <div class="hp-bar"><div id="myHp" class="hp-fill"></div></div>
+                <span id="myHpText">100/100</span>
+            </div>
+            <div class="player-info">
+                <span id="enemyName">Противник</span>
+                <div class="hp-bar"><div id="enemyHp" class="hp-fill"></div></div>
+                <span id="enemyHpText">100/100</span>
+            </div>
+        </div>
+        <canvas id="arena" width="1000" height="650"></canvas>
+        <div id="skills">
+            <div class="skill" data-skill="q"><span class="key">Q</span> Лазер <span class="cd" id="cdq">✓</span></div>
+            <div class="skill" data-skill="w"><span class="key">W</span> Ракеты <span class="cd" id="cdw">✓</span></div>
+            <div class="skill" data-skill="e"><span class="key">E</span> Матрица <span class="cd" id="cde">✓</span></div>
+            <div class="skill" data-skill="r"><span class="key">R</span> Реарм <span class="cd" id="cdr">✓</span></div>
+            <div class="skill" data-skill="z"><span class="key">Z</span> Блинк <span class="cd" id="cdz">✓</span></div>
+            <div class="skill" data-skill="x"><span class="key">X</span> Шива <span class="cd" id="cdx">✓</span></div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
 </body>
 </html>
