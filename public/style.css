@@ -1,0 +1,157 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0d1417;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    color: #c4d4d9;
+}
+
+#menu {
+    background: #19262b;
+    padding: 40px 45px;
+    border-radius: 16px;
+    border: 1px solid #2e484f;
+    text-align: center;
+}
+
+.menu-box h1 {
+    font-size: 28px;
+    color: #d4b84c;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+}
+
+.menu-box p {
+    font-size: 14px;
+    opacity: 0.6;
+    margin-bottom: 20px;
+}
+
+#nickInput {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 24px;
+    border: none;
+    background: #253a41;
+    color: #eaf2f5;
+    font-size: 16px;
+    outline: 1px solid #36555e;
+}
+
+#nickInput:focus {
+    outline: 2px solid #d4b84c;
+}
+
+#playBtn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 24px;
+    background: #d4b84c;
+    color: #0d1417;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 12px;
+}
+
+#status {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #88a8b3;
+}
+
+#game {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#ui {
+    display: flex;
+    justify-content: space-between;
+    width: 1000px;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.player-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #19262b;
+    padding: 4px 14px;
+    border-radius: 20px;
+    border: 1px solid #2e484f;
+}
+
+.hp-bar {
+    width: 100px;
+    height: 10px;
+    background: #253a41;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.hp-fill {
+    height: 100%;
+    background: #68b868;
+    transition: width 0.15s;
+}
+
+#arena {
+    border-radius: 12px;
+    border: 2px solid #253a41;
+    background: #111d21;
+    cursor: none;
+}
+
+#skills {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.skill {
+    background: #19262b;
+    padding: 4px 14px;
+    border-radius: 20px;
+    border: 1px solid #2e484f;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.skill .key {
+    color: #d4b84c;
+    font-weight: 700;
+}
+
+.skill .cd {
+    color: #d48a6a;
+    font-size: 12px;
+    min-width: 20px;
+    text-align: center;
+}
+
+@media (max-width: 1050px) {
+    #arena {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1000/650;
+    }
+    #ui, #skills {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
