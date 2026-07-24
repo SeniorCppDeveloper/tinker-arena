@@ -42,6 +42,13 @@ function connect() {
             aoes = data.aoes;
             updateUI();
             updateLeaderboard();
+            // Обновляем кулдауны из состояния сервера
+            const me = getMe();
+            if (me && me.cooldowns) {
+                for (let key in cooldowns) {
+                    cooldowns[key] = me.cooldowns[key] || 0;
+                }
+            }
         }
     };
 
@@ -80,11 +87,23 @@ canvas.addEventListener('mousemove', (e) => {
 });
 
 canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (W / rect.width);
+    const y = (e.clientY - rect.top) * (H / rect.height);
+    const clickX = Math.max(0, Math.min(W, x));
+    const clickY = Math.max(0, Math.min(H, y));
+    
     if (e.button === 2) {
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) * (W / rect.width);
-        const y = (e.clientY - rect.top) * (H / rect.height);
-        moveTarget = { x: Math.max(0, Math.min(W, x)), y: Math.max(0, Math.min(H, y)) };
+        // ПКМ — движение
+        moveTarget = { x: clickX, y: clickY };
+    }
+    
+    if (e.button === 0) {
+        // ЛКМ — блинк (Z)
+        const me = getMe();
+        if (me && cooldowns.z <= 0 && !me.rearming) {
+            send({ type: 'blink', x: clickX, y: clickY });
+        }
     }
 });
 
@@ -100,6 +119,8 @@ document.addEventListener('keydown', (e) => {
 function useSkill(skill) {
     if (!myId) return;
     if (cooldowns[skill] > 0) return;
+    const me = getMe();
+    if (me && me.rearming) return;
     send({ type: 'skill', skill: skill });
 }
 
@@ -171,17 +192,10 @@ function update() {
         }
     }
 
-    // Обновляем кулдауны локально (с сервера они приходят в state)
-    for (let key in cooldowns) {
-        if (cooldowns[key] > 0) {
-            cooldowns[key] -= 1/60;
-            if (cooldowns[key] < 0) cooldowns[key] = 0;
-        }
-    }
+    // Кулдауны обновляются с сервера через state
 }
 
 function drawCursor() {
-    // Рисуем курсор (мышь)
     ctx.shadowBlur = 0;
     ctx.strokeStyle = 'rgba(255,255,255,0.6)';
     ctx.lineWidth = 1.5;
