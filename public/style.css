@@ -20,6 +20,7 @@ body {
     border-radius: 16px;
     border: 1px solid #2e484f;
     text-align: center;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
 }
 
 .menu-box h1 {
@@ -63,6 +64,10 @@ body {
     margin-top: 12px;
 }
 
+#playBtn:hover {
+    background: #e8cc5a;
+}
+
 #status {
     margin-top: 12px;
     font-size: 13px;
@@ -80,15 +85,16 @@ body {
     justify-content: space-between;
     width: 1000px;
     margin-bottom: 8px;
+    gap: 10px;
 }
 
 #leaderboard {
     background: #19262b;
     border: 1px solid #2e484f;
     border-radius: 10px;
-    padding: 8px 14px;
+    padding: 6px 14px;
     min-width: 150px;
-    max-height: 120px;
+    max-height: 110px;
     overflow-y: auto;
 }
 
@@ -101,13 +107,13 @@ body {
 }
 
 .lb-title {
-    font-size: 12px;
+    font-size: 11px;
     color: #88a8b3;
     text-align: center;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     letter-spacing: 1px;
     border-bottom: 1px solid #1d3238;
-    padding-bottom: 4px;
+    padding-bottom: 3px;
 }
 
 .lb-item {
@@ -126,6 +132,7 @@ body {
     display: flex;
     gap: 12px;
     font-size: 14px;
+    flex-wrap: wrap;
 }
 
 .player-info {
@@ -136,6 +143,10 @@ body {
     padding: 4px 14px;
     border-radius: 20px;
     border: 1px solid #2e484f;
+}
+
+.player-info span {
+    white-space: nowrap;
 }
 
 .hp-bar {
@@ -163,6 +174,8 @@ body {
     display: flex;
     gap: 8px;
     margin-top: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .skill {
@@ -188,19 +201,30 @@ body {
     text-align: center;
 }
 
+#hint {
+    color: #4a6a73;
+    font-size: 12px;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+}
+
 @media (max-width: 1050px) {
     #arena {
         width: 100%;
         height: auto;
         aspect-ratio: 1000/650;
     }
-    #topBar, #ui, #skills {
+    #topBar {
         width: 100%;
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: center;
+    }
+    #ui {
         justify-content: center;
     }
     #leaderboard {
         min-width: 100px;
         max-height: 80px;
+        width: 100%;
     }
 }
