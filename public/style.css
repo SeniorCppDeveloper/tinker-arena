@@ -55,4 +55,152 @@ body {
     padding: 12px;
     border: none;
     border-radius: 24px;
-    background: #d4b
+    background: #d4b84c;
+    color: #0d1417;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 12px;
+}
+
+#status {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #88a8b3;
+}
+
+#game {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#topBar {
+    display: flex;
+    justify-content: space-between;
+    width: 1000px;
+    margin-bottom: 8px;
+}
+
+#leaderboard {
+    background: #19262b;
+    border: 1px solid #2e484f;
+    border-radius: 10px;
+    padding: 8px 14px;
+    min-width: 150px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+#leaderboard::-webkit-scrollbar {
+    width: 4px;
+}
+#leaderboard::-webkit-scrollbar-thumb {
+    background: #2e484f;
+    border-radius: 4px;
+}
+
+.lb-title {
+    font-size: 12px;
+    color: #88a8b3;
+    text-align: center;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #1d3238;
+    padding-bottom: 4px;
+}
+
+.lb-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 2px 0;
+}
+
+.lb-me {
+    color: #d4b84c;
+    font-weight: 700;
+}
+
+#ui {
+    display: flex;
+    gap: 12px;
+    font-size: 14px;
+}
+
+.player-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #19262b;
+    padding: 4px 14px;
+    border-radius: 20px;
+    border: 1px solid #2e484f;
+}
+
+.hp-bar {
+    width: 100px;
+    height: 10px;
+    background: #253a41;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.hp-fill {
+    height: 100%;
+    background: #68b868;
+    transition: width 0.15s;
+}
+
+#arena {
+    border-radius: 12px;
+    border: 2px solid #253a41;
+    background: #111d21;
+    cursor: none;
+}
+
+#skills {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.skill {
+    background: #19262b;
+    padding: 4px 14px;
+    border-radius: 20px;
+    border: 1px solid #2e484f;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.skill .key {
+    color: #d4b84c;
+    font-weight: 700;
+}
+
+.skill .cd {
+    color: #d48a6a;
+    font-size: 12px;
+    min-width: 20px;
+    text-align: center;
+}
+
+@media (max-width: 1050px) {
+    #arena {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1000/650;
+    }
+    #topBar, #ui, #skills {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    #leaderboard {
+        min-width: 100px;
+        max-height: 80px;
+    }
+}
