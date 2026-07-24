@@ -1,86 +1,81 @@
-// Подключение к серверу
-const ws = new WebSocket(`ws://${window.location.host}`);
-
 const canvas = document.getElementById('arena');
 const ctx = canvas.getContext('2d');
 const W = 1000, H = 650;
 
-// Состояние
+const menu = document.getElementById('menu');
+const game = document.getElementById('game');
+const nickInput = document.getElementById('nickInput');
+const playBtn = document.getElementById('playBtn');
+const statusDiv = document.getElementById('status');
+
+let ws;
 let myId = null;
 let players = {};
 let projectiles = [];
 let aoes = [];
-let myName = '';
-let mouseX = 400, mouseY = 350;
+let mouseX = 500, mouseY = 325;
 let moveTarget = null;
-let cds = { Q: 0, W: 0, E: 0, Z: 0, X: 0 };
-const COOLDOWNS = { Q: 6, W: 10, E: 18, Z: 14, X: 25 };
+let myName = '';
+let connected = false;
+let cooldowns = { q: 0, w: 0, e: 0, r: 0, z: 0, x: 0 };
 
-// DOM
-const menu = document.getElementById('menu');
-const gameContainer = document.getElementById('gameContainer');
-const nickInput = document.getElementById('nickInput');
-const playBtn = document.getElementById('playBtn');
-const statusDiv = document.getElementById('status');
-const myNameSpan = document.getElementById('myName');
-const enemyNameSpan = document.getElementById('enemyName');
-const myHpSpan = document.getElementById('myHp');
-const enemyHpSpan = document.getElementById('enemyHp');
-const cdEls = {
-    Q: document.getElementById('cdQ'),
-    W: document.getElementById('cdW'),
-    E: document.getElementById('cdE'),
-    Z: document.getElementById('cdZ'),
-    X: document.getElementById('cdX')
-};
+function connect() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(proto + '//' + location.host);
 
-// WebSocket события
-ws.onopen = () => {
-    statusDiv.textContent = 'Подключено к серверу!';
-};
+    ws.onopen = () => {
+        statusDiv.textContent = 'Подключено, ожидаем...';
+        connected = true;
+    };
 
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    
-    if (data.type === 'init') {
-        myId = data.playerId;
-        players = data.players || {};
-        statusDiv.textContent = 'Игра началась!';
-        menu.style.display = 'none';
-        gameContainer.style.display = 'block';
-    }
-    
-    if (data.type === 'state') {
-        players = data.state.players || {};
-        projectiles = data.state.projectiles || [];
-        aoes = data.state.aoes || [];
-        updateUI();
-    }
-};
+    ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'init') {
+            myId = data.id;
+            menu.style.display = 'none';
+            game.style.display = 'flex';
+            statusDiv.textContent = 'Игра началась';
+        }
+        if (data.type === 'state') {
+            players = data.players;
+            projectiles = data.projectiles;
+            aoes = data.aoes;
+            updateUI();
+        }
+    };
 
-ws.onclose = () => {
-    statusDiv.textContent = 'Соединение потеряно. Перезагрузи страницу.';
-};
+    ws.onclose = () => {
+        statusDiv.textContent = 'Соединение потеряно';
+        connected = false;
+    };
+}
 
-// Отправка действий
-function send(action) {
-    if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(action));
+function send(data) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(data));
     }
 }
 
-// Управление
 playBtn.addEventListener('click', () => {
-    myName = nickInput.value.trim() || 'Игрок';
-    send({ type: 'init', name: myName });
+    myName = nickInput.value.trim() || 'Tinker';
+    connect();
+    setTimeout(() => {
+        send({ type: 'setName', name: myName });
+    }, 300);
 });
 
-canvas.addEventListener('contextmenu', e => e.preventDefault());
+nickInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') playBtn.click();
+});
+
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
     mouseX = (e.clientX - rect.left) * (W / rect.width);
     mouseY = (e.clientY - rect.top) * (H / rect.height);
+    mouseX = Math.max(0, Math.min(W, mouseX));
+    mouseY = Math.max(0, Math.min(H, mouseY));
 });
 
 canvas.addEventListener('mousedown', (e) => {
@@ -88,65 +83,95 @@ canvas.addEventListener('mousedown', (e) => {
         const rect = canvas.getBoundingClientRect();
         const x = (e.clientX - rect.left) * (W / rect.width);
         const y = (e.clientY - rect.top) * (H / rect.height);
-        moveTarget = { x, y };
-        send({ type: 'move', x, y, angle: Math.atan2(mouseY - getMyPlayer().y, mouseX - getMyPlayer().x) });
+        moveTarget = { x: Math.max(0, Math.min(W, x)), y: Math.max(0, Math.min(H, y)) };
     }
 });
 
 document.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
-    if (key === 'q') applySkill('Q');
-    if (key === 'w') applySkill('W');
-    if (key === 'e') applySkill('E');
-    if (key === 'z') applySkill('Z');
-    if (key === 'x') applySkill('X');
+    const skills = { q: 'q', w: 'w', e: 'e', r: 'r', z: 'z', x: 'x' };
+    if (skills[key]) {
+        e.preventDefault();
+        useSkill(key);
+    }
 });
 
-function getMyPlayer() {
+function useSkill(skill) {
+    if (!myId) return;
+    if (cooldowns[skill] > 0) return;
+    send({ type: 'skill', skill: skill });
+}
+
+function getMe() {
     return players[myId] || null;
 }
 
-function applySkill(skill) {
-    if (cds[skill] > 0) return;
-    cds[skill] = COOLDOWNS[skill];
-    send({ type: 'skill', skill });
-}
-
-// Обновление UI
 function updateUI() {
-    const me = getMyPlayer();
+    const me = getMe();
     if (me) {
-        myNameSpan.textContent = me.name || 'Вы';
-        myHpSpan.textContent = `${Math.floor(me.hp)}/${me.maxHp}`;
+        document.getElementById('myName').textContent = me.name || 'Вы';
+        const hpPct = (me.hp / me.maxHp) * 100;
+        document.getElementById('myHp').style.width = hpPct + '%';
+        document.getElementById('myHpText').textContent = Math.floor(me.hp) + '/' + me.maxHp;
     }
-    
-    // Находим врага (первого не себя)
-    for (let id in players) {
-        if (id !== myId) {
-            const enemy = players[id];
-            enemyNameSpan.textContent = enemy.name || 'Противник';
-            enemyHpSpan.textContent = `${Math.floor(enemy.hp)}/${enemy.maxHp}`;
-            break;
-        }
+
+    const enemy = Object.values(players).find(p => p.id !== myId);
+    if (enemy) {
+        document.getElementById('enemyName').textContent = enemy.name || 'Противник';
+        const hpPct = (enemy.hp / enemy.maxHp) * 100;
+        document.getElementById('enemyHp').style.width = hpPct + '%';
+        document.getElementById('enemyHpText').textContent = Math.floor(enemy.hp) + '/' + enemy.maxHp;
     }
-    
-    // Кулдауны
-    for (let k in cds) {
-        if (cds[k] > 0) {
-            cds[k] -= 1/60;
-            cdEls[k].textContent = Math.ceil(cds[k]);
+
+    for (let key in cooldowns) {
+        const el = document.getElementById('cd' + key);
+        if (cooldowns[key] > 0) {
+            el.textContent = Math.ceil(cooldowns[key]);
         } else {
-            cdEls[k].textContent = '✔';
+            el.textContent = '✓';
         }
     }
 }
 
-// Отрисовка
+let lastSend = 0;
+
+function update() {
+    const me = getMe();
+    if (!me || !connected) return;
+
+    if (moveTarget) {
+        const dx = moveTarget.x - me.x;
+        const dy = moveTarget.y - me.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 3) {
+            const speed = 4.2;
+            const newX = me.x + (dx / dist) * speed;
+            const newY = me.y + (dy / dist) * speed;
+            const angle = Math.atan2(mouseY - me.y, mouseX - me.x);
+            send({ type: 'move', x: newX, y: newY, angle });
+        } else {
+            moveTarget = null;
+        }
+    } else {
+        const angle = Math.atan2(mouseY - me.y, mouseX - me.x);
+        if (Math.abs(me.angle - angle) > 0.05) {
+            send({ type: 'move', x: me.x, y: me.y, angle });
+        }
+    }
+
+    for (let key in cooldowns) {
+        if (cooldowns[key] > 0) {
+            cooldowns[key] -= 1/60;
+            if (cooldowns[key] < 0) cooldowns[key] = 0;
+        }
+    }
+}
+
 function draw() {
     ctx.clearRect(0, 0, W, H);
-    
-    // Сетка
-    ctx.strokeStyle = '#1d373e';
+
+    // grid
+    ctx.strokeStyle = '#18292e';
     ctx.lineWidth = 1;
     for (let i = 0; i < W; i += 60) {
         ctx.beginPath();
@@ -160,137 +185,121 @@ function draw() {
         ctx.lineTo(W, i);
         ctx.stroke();
     }
-    
-    // АОЕ
+
+    // aoes
     for (let aoe of aoes) {
         const grad = ctx.createRadialGradient(aoe.x, aoe.y, 10, aoe.x, aoe.y, aoe.radius);
-        grad.addColorStop(0, 'rgba(100,200,255,0.3)');
-        grad.addColorStop(1, 'rgba(0,50,150,0)');
+        grad.addColorStop(0, 'rgba(120,220,255,0.25)');
+        grad.addColorStop(0.7, 'rgba(60,160,255,0.1)');
+        grad.addColorStop(1, 'rgba(0,50,120,0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(aoe.x, aoe.y, aoe.radius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(100,200,255,0.5)';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(120,220,255,0.3)';
+        ctx.lineWidth = 1.5;
         ctx.stroke();
-        ctx.fillStyle = 'rgba(200,240,255,0.8)';
-        ctx.font = '30px sans-serif';
+        ctx.fillStyle = 'rgba(180,235,255,0.7)';
+        ctx.font = '26px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('❄', aoe.x, aoe.y + 10);
+        ctx.fillText('❄', aoe.x, aoe.y + 8);
     }
-    
-    // Снаряды
+
+    // projectiles
     for (let pr of projectiles) {
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = pr.owner === myId ? '#ffdd44' : '#ff6644';
+        const isMine = pr.owner === myId;
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = isMine ? '#d4b84c' : '#e06a4a';
         ctx.beginPath();
-        ctx.arc(pr.x, pr.y, 8, 0, Math.PI * 2);
-        ctx.fillStyle = pr.owner === myId ? '#ffcc33' : '#ff5533';
+        ctx.arc(pr.x, pr.y, pr.radius || 6, 0, Math.PI * 2);
+        ctx.fillStyle = isMine ? '#e8c84a' : '#e06a4a';
         ctx.fill();
         ctx.shadowBlur = 0;
+        if (pr.type === 'laser') {
+            for (let i = 0; i < 3; i++) {
+                const a = i * 0.8 - 0.8;
+                ctx.beginPath();
+                ctx.moveTo(pr.x, pr.y);
+                ctx.lineTo(pr.x + Math.cos(a) * 45, pr.y + Math.sin(a) * 45);
+                ctx.strokeStyle = isMine ? 'rgba(220,200,80,0.25)' : 'rgba(220,100,70,0.25)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
     }
-    
-    // Игроки
+
+    // players
     for (let id in players) {
-        drawPlayer(players[id], id === myId);
-    }
-}
+        const p = players[id];
+        const isMine = id === myId;
+        const x = p.x, y = p.y;
+        const angle = p.angle || 0;
 
-function drawPlayer(player, isLocal) {
-    const x = player.x, y = player.y;
-    const angle = player.angle || 0;
-    
-    // Тело
-    ctx.shadowBlur = 30;
-    ctx.shadowColor = isLocal ? '#ffdd44' : '#ff6644';
-    const grad = ctx.createRadialGradient(x - 10, y - 10, 5, x, y, 28);
-    grad.addColorStop(0, isLocal ? '#ffe066' : '#ff8866');
-    grad.addColorStop(0.5, isLocal ? '#ddaa33' : '#cc5533');
-    grad.addColorStop(1, '#1a2a2f');
-    ctx.beginPath();
-    ctx.arc(x, y, 24, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = isLocal ? '#ffdd44' : '#ff6644';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-    
-    // Глаза
-    const ex = x + Math.cos(angle) * 12;
-    const ey = y + Math.sin(angle) * 12;
-    ctx.fillStyle = '#f0faff';
-    ctx.beginPath();
-    ctx.arc(ex - 6, ey - 4, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(ex + 6, ey - 4, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#0a1215';
-    ctx.beginPath();
-    ctx.arc(ex - 6 + Math.cos(angle) * 3, ey - 4 + Math.sin(angle) * 3, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(ex + 6 + Math.cos(angle) * 3, ey - 4 + Math.sin(angle) * 3, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Щит
-    if (player.shieldHp > 0) {
-        ctx.strokeStyle = 'rgba(100,200,255,0.8)';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([6, 6]);
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = isMine ? '#d4b84c' : '#d06a4a';
+        const grad = ctx.createRadialGradient(x - 8, y - 8, 4, x, y, 26);
+        grad.addColorStop(0, isMine ? '#edd86a' : '#e8845a');
+        grad.addColorStop(0.6, isMine ? '#c8a838' : '#c85a3a');
+        grad.addColorStop(1, '#18292e');
         ctx.beginPath();
-        ctx.arc(x, y, 34, 0, Math.PI * 2);
+        ctx.arc(x, y, 22, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = isMine ? '#d4b84c' : '#d06a4a';
+        ctx.lineWidth = 2;
         ctx.stroke();
-        ctx.setLineDash([]);
+
+        const ex = x + Math.cos(angle) * 11;
+        const ey = y + Math.sin(angle) * 11;
+        ctx.fillStyle = '#eaf2f5';
+        ctx.beginPath();
+        ctx.arc(ex - 5, ey - 3, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(ex + 5, ey - 3, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0d1417';
+        ctx.beginPath();
+        ctx.arc(ex - 5 + Math.cos(angle) * 2.5, ey - 3 + Math.sin(angle) * 2.5, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(ex + 5 + Math.cos(angle) * 2.5, ey - 3 + Math.sin(angle) * 2.5, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (p.shieldHp > 0) {
+            ctx.strokeStyle = 'rgba(120,220,255,0.6)';
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.arc(x, y, 30, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(120,220,255,0.08)';
+            ctx.beginPath();
+            ctx.arc(x, y, 30, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.fillStyle = '#bccfd4';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(p.name || (isMine ? 'Вы' : 'Враг'), x, y - 34);
+
+        const hw = 46, hh = 5;
+        ctx.fillStyle = '#18292e';
+        ctx.fillRect(x - hw/2, y - 26, hw, hh);
+        const hpPct = Math.max(0, p.hp / p.maxHp);
+        ctx.fillStyle = hpPct > 0.5 ? '#68b868' : '#c86848';
+        ctx.fillRect(x - hw/2, y - 26, hw * hpPct, hh);
     }
-    
-    // Имя
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillStyle = '#d0e8ed';
-    ctx.textAlign = 'center';
-    ctx.fillText(player.name || (isLocal ? 'Вы' : 'Враг'), x, y - 38);
-    
-    // HP
-    const hpW = 50, hpH = 5;
-    ctx.fillStyle = '#1d2e33';
-    ctx.fillRect(x - hpW/2, y - 30, hpW, hpH);
-    ctx.fillStyle = player.hp / player.maxHp > 0.5 ? '#6fbf6f' : '#d97a4a';
-    ctx.fillRect(x - hpW/2, y - 30, hpW * (player.hp / player.maxHp), hpH);
 }
 
-// Цикл игры
-function gameLoop() {
-    // Отправка позиции при движении
-    const me = getMyPlayer();
-    if (me && moveTarget) {
-        const dx = moveTarget.x - me.x;
-        const dy = moveTarget.y - me.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > 5) {
-            const speed = 4.5;
-            const newX = me.x + (dx / dist) * speed;
-            const newY = me.y + (dy / dist) * speed;
-            const angle = Math.atan2(mouseY - me.y, mouseX - me.x);
-            send({ type: 'move', x: newX, y: newY, angle });
-        } else {
-            moveTarget = null;
-        }
-    }
-    
-    // Обновление угла (поворот к мыши)
-    if (me) {
-        const angle = Math.atan2(mouseY - me.y, mouseX - me.x);
-        // Отправляем угол, если он изменился
-        if (Math.abs(me.angle - angle) > 0.1) {
-            send({ type: 'move', x: me.x, y: me.y, angle });
-        }
-    }
-    
+function loop() {
+    update();
     draw();
-    requestAnimationFrame(gameLoop);
+    requestAnimationFrame(loop);
 }
 
-// Запуск
-gameLoop();
 setInterval(updateUI, 100);
+loop();
