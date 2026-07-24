@@ -92,7 +92,6 @@ wss.on('connection', (ws) => {
                 broadcast();
             }
 
-            // Блинк через клик мыши
             if (data.type === 'blink') {
                 if (player.rearming) return;
                 if (player.cooldowns.z > 0) return;
@@ -104,7 +103,6 @@ wss.on('connection', (ws) => {
                 const dy = targetY - player.y;
                 const dist = Math.hypot(dx, dy);
                 
-                // Максимальная дистанция блинка 1200
                 const maxBlink = 1200;
                 let newX, newY;
                 if (dist <= maxBlink) {
@@ -118,7 +116,6 @@ wss.on('connection', (ws) => {
                 player.x = Math.max(20, Math.min(980, newX));
                 player.y = Math.max(20, Math.min(630, newY));
                 
-                // Эффект блинка
                 projectiles.push({
                     x: player.x,
                     y: player.y,
@@ -149,10 +146,9 @@ wss.on('connection', (ws) => {
                 };
                 player.cooldowns[skill] = cooldowns[skill] || 5;
 
-                // Q - Лазер (полоса на всю карту)
                 if (skill === 'q') {
                     const angle = player.angle || 0;
-                    const len = 2000; // На всю карту
+                    const len = 2000;
                     const width = 40;
                     
                     for (let t of targets) {
@@ -193,7 +189,6 @@ wss.on('connection', (ws) => {
                     });
                 }
 
-                // W - Ракеты (гоминг на всю карту)
                 if (skill === 'w') {
                     const alive = getAlivePlayers().filter(p => p.id !== id);
                     const rocketCount = 3;
@@ -234,7 +229,6 @@ wss.on('connection', (ws) => {
                     }
                 }
 
-                // E - Матрица
                 if (skill === 'e') {
                     player.shieldHp = 25;
                     const a = player.angle || 0;
@@ -244,13 +238,11 @@ wss.on('connection', (ws) => {
                     player.y = Math.max(20, Math.min(630, player.y));
                 }
 
-                // R - Реарм
                 if (skill === 'r') {
                     player.rearming = true;
                     player.rearmTime = 60;
                 }
 
-                // X - Шива
                 if (skill === 'x') {
                     aoes.push({
                         x: player.x,
@@ -313,7 +305,6 @@ setInterval(() => {
         pr.y += pr.vy;
         pr.life--;
 
-        // Супер-гоминг для ракет
         if (pr.homing && pr.targetId && players[pr.targetId]) {
             const t = players[pr.targetId];
             const dx = t.x - pr.x;
