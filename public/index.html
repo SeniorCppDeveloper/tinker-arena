@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -20,7 +20,7 @@
     <div id="game" style="display:none;">
         <div id="topBar">
             <div id="leaderboard">
-                <div class="lb-title">📊 ТАБЛИЦА</div>
+                <div class="lb-title">ТАБЛИЦА</div>
                 <div id="leaderboardList"></div>
             </div>
             <div id="ui">
@@ -38,16 +38,14 @@
         </div>
         <canvas id="arena" width="1000" height="650"></canvas>
         <div id="skills">
-            <div class="skill" data-skill="q"><span class="key">Q</span> Лазер <span class="cd" id="cdq">✓</span></div>
-            <div class="skill" data-skill="w"><span class="key">W</span> Ракеты <span class="cd" id="cdw">✓</span></div>
-            <div class="skill" data-skill="e"><span class="key">E</span> Матрица <span class="cd" id="cde">✓</span></div>
-            <div class="skill" data-skill="r"><span class="key">R</span> Реарм <span class="cd" id="cdr">✓</span></div>
-            <div class="skill" data-skill="z"><span class="key">Z</span> Блинк <span class="cd" id="cdz">✓</span></div>
-            <div class="skill" data-skill="x"><span class="key">X</span> Шива <span class="cd" id="cdx">✓</span></div>
+            <div class="skill"><span class="key">Q</span> Лазер <span class="cd" id="cdq">✓</span></div>
+            <div class="skill"><span class="key">W</span> Ракеты <span class="cd" id="cdw">✓</span></div>
+            <div class="skill"><span class="key">E</span> Матрица <span class="cd" id="cde">✓</span></div>
+            <div class="skill"><span class="key">R</span> Реарм <span class="cd" id="cdr">✓</span></div>
+            <div class="skill"><span class="key">Z</span> Блинк <span class="cd" id="cdz">✓</span></div>
+            <div class="skill"><span class="key">X</span> Шива <span class="cd" id="cdx">✓</span></div>
         </div>
-        <div style="color:#88a8b3;font-size:12px;margin-top:4px;">
-            🖱️ ПКМ — движение | ЛКМ — блинк (Z) | QWERX — скиллы
-        </div>
+        <div id="hint">ПКМ — движение | Z или ЛКМ — блинк | QWERX — скиллы</div>
     </div>
 
     <script src="game.js"></script>
