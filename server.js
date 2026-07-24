@@ -92,6 +92,45 @@ wss.on('connection', (ws) => {
                 broadcast();
             }
 
+            // Блинк через клик мыши
+            if (data.type === 'blink') {
+                if (player.rearming) return;
+                if (player.cooldowns.z > 0) return;
+                player.cooldowns.z = 14;
+                
+                const targetX = data.x;
+                const targetY = data.y;
+                const dx = targetX - player.x;
+                const dy = targetY - player.y;
+                const dist = Math.hypot(dx, dy);
+                
+                // Максимальная дистанция блинка 1200
+                const maxBlink = 1200;
+                let newX, newY;
+                if (dist <= maxBlink) {
+                    newX = targetX;
+                    newY = targetY;
+                } else {
+                    newX = player.x + (dx / dist) * maxBlink;
+                    newY = player.y + (dy / dist) * maxBlink;
+                }
+                
+                player.x = Math.max(20, Math.min(980, newX));
+                player.y = Math.max(20, Math.min(630, newY));
+                
+                // Эффект блинка
+                projectiles.push({
+                    x: player.x,
+                    y: player.y,
+                    owner: id,
+                    life: 15,
+                    type: 'blink_effect',
+                    radius: 40
+                });
+                
+                broadcast();
+            }
+
             if (data.type === 'skill') {
                 const skill = data.skill;
                 if (player.rearming) return;
@@ -110,11 +149,11 @@ wss.on('connection', (ws) => {
                 };
                 player.cooldowns[skill] = cooldowns[skill] || 5;
 
-                // Q - Лазер
+                // Q - Лазер (полоса на всю карту)
                 if (skill === 'q') {
                     const angle = player.angle || 0;
-                    const len = 300;
-                    const width = 30;
+                    const len = 2000; // На всю карту
+                    const width = 40;
                     
                     for (let t of targets) {
                         const dx = t.x - player.x;
@@ -124,7 +163,7 @@ wss.on('connection', (ws) => {
                         const proj = (dx * Math.cos(angle) + dy * Math.sin(angle)) / dist;
                         const perp = Math.abs(-dx * Math.sin(angle) + dy * Math.cos(angle)) / dist;
                         if (perp < width / dist) {
-                            let dmg = 18;
+                            let dmg = 22;
                             if (t.shieldHp > 0) {
                                 const absorbed = Math.min(t.shieldHp, dmg);
                                 t.shieldHp -= absorbed;
@@ -154,7 +193,7 @@ wss.on('connection', (ws) => {
                     });
                 }
 
-                // W - Ракеты
+                // W - Ракеты (гоминг на всю карту)
                 if (skill === 'w') {
                     const alive = getAlivePlayers().filter(p => p.id !== id);
                     const rocketCount = 3;
@@ -176,20 +215,21 @@ wss.on('connection', (ws) => {
                     for (let i = 0; i < targetsForRockets.length; i++) {
                         const target = targetsForRockets[i];
                         const angle = Math.atan2(target.y - player.y, target.x - player.x);
-                        const offset = (i - 1) * 0.25;
+                        const offset = (i - 1) * 0.2;
                         projectiles.push({
                             x: player.x + Math.cos(angle + offset) * 30,
                             y: player.y + Math.sin(angle + offset) * 30,
-                            vx: Math.cos(angle + offset) * 5,
-                            vy: Math.sin(angle + offset) * 5,
+                            vx: Math.cos(angle + offset) * 6,
+                            vy: Math.sin(angle + offset) * 6,
                             owner: id,
-                            damage: 14,
-                            life: 90,
+                            damage: 16,
+                            life: 200,
                             radius: 8,
                             type: 'rocket',
                             homing: true,
                             targetId: target.id,
-                            speed: 5.5
+                            speed: 7,
+                            homingStrength: 0.25
                         });
                     }
                 }
@@ -208,23 +248,6 @@ wss.on('connection', (ws) => {
                 if (skill === 'r') {
                     player.rearming = true;
                     player.rearmTime = 60;
-                }
-
-                // Z - Блинк
-                if (skill === 'z') {
-                    const a = player.angle || 0;
-                    const newX = player.x + Math.cos(a) * 350;
-                    const newY = player.y + Math.sin(a) * 350;
-                    player.x = Math.max(20, Math.min(980, newX));
-                    player.y = Math.max(20, Math.min(630, newY));
-                    projectiles.push({
-                        x: player.x,
-                        y: player.y,
-                        owner: id,
-                        life: 15,
-                        type: 'blink_effect',
-                        radius: 40
-                    });
                 }
 
                 // X - Шива
@@ -290,18 +313,21 @@ setInterval(() => {
         pr.y += pr.vy;
         pr.life--;
 
+        // Супер-гоминг для ракет
         if (pr.homing && pr.targetId && players[pr.targetId]) {
             const t = players[pr.targetId];
             const dx = t.x - pr.x;
             const dy = t.y - pr.y;
             const dist = Math.hypot(dx, dy);
             if (dist > 0) {
-                pr.vx += (dx / dist) * 0.12;
-                pr.vy += (dy / dist) * 0.12;
+                const strength = pr.homingStrength || 0.25;
+                pr.vx += (dx / dist) * strength;
+                pr.vy += (dy / dist) * strength;
                 const spd = Math.hypot(pr.vx, pr.vy);
-                if (spd > 7) {
-                    pr.vx = (pr.vx / spd) * 7;
-                    pr.vy = (pr.vy / spd) * 7;
+                const maxSpeed = pr.speed || 7;
+                if (spd > maxSpeed) {
+                    pr.vx = (pr.vx / spd) * maxSpeed;
+                    pr.vy = (pr.vy / spd) * maxSpeed;
                 }
             }
         }
@@ -331,7 +357,7 @@ setInterval(() => {
             }
         }
 
-        if (hit || pr.life <= 0 || pr.x < -50 || pr.x > 1050 || pr.y < -50 || pr.y > 700) {
+        if (hit || pr.life <= 0 || pr.x < -100 || pr.x > 1100 || pr.y < -100 || pr.y > 750) {
             projectiles.splice(i, 1);
         }
     }
