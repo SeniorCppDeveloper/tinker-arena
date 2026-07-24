@@ -1,7 +1,7 @@
 {
   "name": "tinker-arena",
   "version": "1.0.0",
-  "description": "Мультиплеерная игра Tinker Arena",
+  "description": "Tinker arena multiplayer game",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
