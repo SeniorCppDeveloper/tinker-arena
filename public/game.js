@@ -42,7 +42,6 @@ function connect() {
             aoes = data.aoes;
             updateUI();
             updateLeaderboard();
-            // Обновляем кулдауны из состояния сервера
             const me = getMe();
             if (me && me.cooldowns) {
                 for (let key in cooldowns) {
@@ -99,17 +98,29 @@ canvas.addEventListener('mousedown', (e) => {
     }
     
     if (e.button === 0) {
-        // ЛКМ — блинк (Z)
+        // ЛКМ — блинк (как в доте)
         const me = getMe();
         if (me && cooldowns.z <= 0 && !me.rearming) {
             send({ type: 'blink', x: clickX, y: clickY });
+            // Ставим локальный кулдаун для отображения
+            cooldowns.z = 14;
         }
     }
 });
 
 document.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
-    const skills = { q: 'q', w: 'w', e: 'e', r: 'r', z: 'z', x: 'x' };
+    if (key === 'z') {
+        e.preventDefault();
+        // Блинк по нажатию Z в направлении мыши
+        const me = getMe();
+        if (me && cooldowns.z <= 0 && !me.rearming) {
+            send({ type: 'blink', x: mouseX, y: mouseY });
+            cooldowns.z = 14;
+        }
+        return;
+    }
+    const skills = { q: 'q', w: 'w', e: 'e', r: 'r', x: 'x' };
     if (skills[key]) {
         e.preventDefault();
         useSkill(key);
@@ -166,8 +177,6 @@ function updateLeaderboard() {
     ).join('');
 }
 
-let lastSend = 0;
-
 function update() {
     const me = getMe();
     if (!me || !connected) return;
@@ -192,7 +201,12 @@ function update() {
         }
     }
 
-    // Кулдауны обновляются с сервера через state
+    for (let key in cooldowns) {
+        if (cooldowns[key] > 0) {
+            cooldowns[key] -= 1/60;
+            if (cooldowns[key] < 0) cooldowns[key] = 0;
+        }
+    }
 }
 
 function drawCursor() {
