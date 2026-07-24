@@ -33,20 +33,23 @@ function broadcast() {
 }
 
 function getRandomSpawn() {
-    const margin = 80;
     const spots = [
-        { x: margin, y: margin },
-        { x: 1000 - margin, y: margin },
-        { x: margin, y: 650 - margin },
-        { x: 1000 - margin, y: 650 - margin },
+        { x: 150, y: 150 },
+        { x: 850, y: 150 },
+        { x: 150, y: 500 },
+        { x: 850, y: 500 },
         { x: 500, y: 100 },
         { x: 500, y: 550 }
     ];
     const spot = spots[Math.floor(Math.random() * spots.length)];
     return {
-        x: spot.x + (Math.random() - 0.5) * 60,
-        y: spot.y + (Math.random() - 0.5) * 60
+        x: spot.x + (Math.random() - 0.5) * 40,
+        y: spot.y + (Math.random() - 0.5) * 40
     };
+}
+
+function getAlivePlayers() {
+    return Object.values(players).filter(p => p.hp > 0);
 }
 
 wss.on('connection', (ws) => {
@@ -62,6 +65,9 @@ wss.on('connection', (ws) => {
         maxHp: 100,
         angle: 0,
         shieldHp: 0,
+        kills: 0,
+        rearming: false,
+        rearmTime: 0,
         cooldowns: { q: 0, w: 0, e: 0, r: 0, z: 0, x: 0 }
     };
 
@@ -79,6 +85,7 @@ wss.on('connection', (ws) => {
             }
 
             if (data.type === 'move') {
+                if (player.rearming) return;
                 player.x = data.x;
                 player.y = data.y;
                 player.angle = data.angle || 0;
@@ -87,100 +94,148 @@ wss.on('connection', (ws) => {
 
             if (data.type === 'skill') {
                 const skill = data.skill;
+                if (player.rearming) return;
                 if (player.cooldowns[skill] > 0) return;
 
-                const target = Object.values(players).find(p => p.id !== id);
-                if (!target) return;
+                const targets = getAlivePlayers().filter(p => p.id !== id);
+                if (targets.length === 0) return;
 
                 const cooldowns = {
-                    q: 4,
-                    w: 8,
+                    q: 5,
+                    w: 9,
                     e: 16,
-                    r: 30,
+                    r: 35,
                     z: 14,
-                    x: 22
+                    x: 24
                 };
                 player.cooldowns[skill] = cooldowns[skill] || 5;
 
+                // Q - Лазер
                 if (skill === 'q') {
-                    const angle = Math.atan2(target.y - player.y, target.x - player.x);
-                    projectiles.push({
-                        x: player.x + Math.cos(angle) * 30,
-                        y: player.y + Math.sin(angle) * 30,
-                        vx: Math.cos(angle) * 9,
-                        vy: Math.sin(angle) * 9,
-                        owner: id,
-                        damage: 22,
-                        life: 40,
-                        radius: 6,
-                        type: 'laser'
-                    });
-                    for (let i = 0; i < 3; i++) {
-                        const a = angle + (i - 1) * 0.6;
-                        projectiles.push({
-                            x: player.x + Math.cos(angle) * 30,
-                            y: player.y + Math.sin(angle) * 30,
-                            vx: Math.cos(a) * 7,
-                            vy: Math.sin(a) * 7,
-                            owner: id,
-                            damage: 12,
-                            life: 25,
-                            radius: 4,
-                            type: 'chain'
-                        });
+                    const angle = player.angle || 0;
+                    const len = 300;
+                    const width = 30;
+                    
+                    for (let t of targets) {
+                        const dx = t.x - player.x;
+                        const dy = t.y - player.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist > len) continue;
+                        const proj = (dx * Math.cos(angle) + dy * Math.sin(angle)) / dist;
+                        const perp = Math.abs(-dx * Math.sin(angle) + dy * Math.cos(angle)) / dist;
+                        if (perp < width / dist) {
+                            let dmg = 18;
+                            if (t.shieldHp > 0) {
+                                const absorbed = Math.min(t.shieldHp, dmg);
+                                t.shieldHp -= absorbed;
+                                dmg -= absorbed;
+                            }
+                            t.hp = Math.max(0, t.hp - dmg);
+                            if (t.hp <= 0) {
+                                player.kills++;
+                                const spawn = getRandomSpawn();
+                                t.hp = t.maxHp;
+                                t.x = spawn.x;
+                                t.y = spawn.y;
+                                t.shieldHp = 0;
+                            }
+                        }
                     }
+                    
+                    projectiles.push({
+                        x: player.x,
+                        y: player.y,
+                        endX: player.x + Math.cos(angle) * len,
+                        endY: player.y + Math.sin(angle) * len,
+                        owner: id,
+                        life: 8,
+                        type: 'laser_beam',
+                        width: width
+                    });
                 }
 
+                // W - Ракеты
                 if (skill === 'w') {
-                    for (let i = 0; i < 3; i++) {
-                        const angle = Math.atan2(target.y - player.y, target.x - player.x) + (i - 1) * 0.3;
+                    const alive = getAlivePlayers().filter(p => p.id !== id);
+                    const rocketCount = 3;
+                    let targetsForRockets = [];
+                    
+                    if (alive.length === 1) {
+                        for (let i = 0; i < rocketCount; i++) {
+                            targetsForRockets.push(alive[0]);
+                        }
+                    } else if (alive.length === 2) {
+                        targetsForRockets.push(alive[0], alive[1], alive[0]);
+                    } else {
+                        const shuffled = [...alive].sort(() => Math.random() - 0.5);
+                        for (let i = 0; i < rocketCount; i++) {
+                            targetsForRockets.push(shuffled[i % shuffled.length]);
+                        }
+                    }
+
+                    for (let i = 0; i < targetsForRockets.length; i++) {
+                        const target = targetsForRockets[i];
+                        const angle = Math.atan2(target.y - player.y, target.x - player.x);
+                        const offset = (i - 1) * 0.25;
                         projectiles.push({
-                            x: player.x + Math.cos(angle) * 30,
-                            y: player.y + Math.sin(angle) * 30,
-                            vx: Math.cos(angle) * 5.5,
-                            vy: Math.sin(angle) * 5.5,
+                            x: player.x + Math.cos(angle + offset) * 30,
+                            y: player.y + Math.sin(angle + offset) * 30,
+                            vx: Math.cos(angle + offset) * 5,
+                            vy: Math.sin(angle + offset) * 5,
                             owner: id,
                             damage: 14,
-                            life: 80,
+                            life: 90,
                             radius: 8,
                             type: 'rocket',
                             homing: true,
-                            targetId: target.id
+                            targetId: target.id,
+                            speed: 5.5
                         });
                     }
                 }
 
+                // E - Матрица
                 if (skill === 'e') {
                     player.shieldHp = 25;
                     const a = player.angle || 0;
-                    player.x += Math.cos(a) * 90;
-                    player.y += Math.sin(a) * 90;
+                    player.x += Math.cos(a) * 80;
+                    player.y += Math.sin(a) * 80;
                     player.x = Math.max(20, Math.min(980, player.x));
                     player.y = Math.max(20, Math.min(630, player.y));
                 }
 
+                // R - Реарм
                 if (skill === 'r') {
-                    for (let key in player.cooldowns) {
-                        player.cooldowns[key] = 0;
-                    }
+                    player.rearming = true;
+                    player.rearmTime = 60;
                 }
 
+                // Z - Блинк
                 if (skill === 'z') {
                     const a = player.angle || 0;
-                    player.x += Math.cos(a) * 320;
-                    player.y += Math.sin(a) * 320;
-                    player.x = Math.max(20, Math.min(980, player.x));
-                    player.y = Math.max(20, Math.min(630, player.y));
+                    const newX = player.x + Math.cos(a) * 350;
+                    const newY = player.y + Math.sin(a) * 350;
+                    player.x = Math.max(20, Math.min(980, newX));
+                    player.y = Math.max(20, Math.min(630, newY));
+                    projectiles.push({
+                        x: player.x,
+                        y: player.y,
+                        owner: id,
+                        life: 15,
+                        type: 'blink_effect',
+                        radius: 40
+                    });
                 }
 
+                // X - Шива
                 if (skill === 'x') {
                     aoes.push({
                         x: player.x,
                         y: player.y,
-                        radius: 170,
-                        damage: 12,
+                        radius: 180,
+                        damage: 14,
                         owner: id,
-                        life: 55,
+                        life: 50,
                         type: 'shiva'
                     });
                 }
@@ -188,7 +243,7 @@ wss.on('connection', (ws) => {
                 broadcast();
             }
         } catch (e) {
-            console.log('Ошибка обработки:', e);
+            console.log('Ошибка:', e);
         }
     });
 
@@ -201,6 +256,17 @@ wss.on('connection', (ws) => {
 setInterval(() => {
     for (let id in players) {
         const p = players[id];
+        
+        if (p.rearming) {
+            p.rearmTime--;
+            if (p.rearmTime <= 0) {
+                p.rearming = false;
+                for (let key in p.cooldowns) {
+                    p.cooldowns[key] = 0;
+                }
+            }
+        }
+        
         for (let key in p.cooldowns) {
             if (p.cooldowns[key] > 0) {
                 p.cooldowns[key] -= 1/60;
@@ -211,6 +277,15 @@ setInterval(() => {
 
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const pr = projectiles[i];
+        
+        if (pr.type === 'laser_beam' || pr.type === 'blink_effect') {
+            pr.life--;
+            if (pr.life <= 0) {
+                projectiles.splice(i, 1);
+            }
+            continue;
+        }
+
         pr.x += pr.vx;
         pr.y += pr.vy;
         pr.life--;
@@ -243,6 +318,14 @@ setInterval(() => {
                     dmg -= absorbed;
                 }
                 p.hp = Math.max(0, p.hp - dmg);
+                if (p.hp <= 0 && players[pr.owner]) {
+                    players[pr.owner].kills++;
+                    const spawn = getRandomSpawn();
+                    p.hp = p.maxHp;
+                    p.x = spawn.x;
+                    p.y = spawn.y;
+                    p.shieldHp = 0;
+                }
                 hit = true;
                 break;
             }
@@ -271,16 +354,15 @@ setInterval(() => {
                     dmg -= absorbed;
                 }
                 p.hp = Math.max(0, p.hp - dmg);
+                if (p.hp <= 0 && players[aoe.owner]) {
+                    players[aoe.owner].kills++;
+                    const spawn = getRandomSpawn();
+                    p.hp = p.maxHp;
+                    p.x = spawn.x;
+                    p.y = spawn.y;
+                    p.shieldHp = 0;
+                }
             }
-        }
-    }
-
-    for (let id in players) {
-        if (players[id].hp <= 0) {
-            const spawn = getRandomSpawn();
-            players[id].hp = players[id].maxHp;
-            players[id].x = spawn.x;
-            players[id].y = spawn.y;
         }
     }
 
