@@ -41,6 +41,7 @@ function connect() {
             projectiles = data.projectiles;
             aoes = data.aoes;
             updateUI();
+            updateLeaderboard();
         }
     };
 
@@ -133,6 +134,17 @@ function updateUI() {
     }
 }
 
+function updateLeaderboard() {
+    const list = document.getElementById('leaderboardList');
+    const sorted = Object.values(players).sort((a, b) => b.kills - a.kills);
+    list.innerHTML = sorted.map(p => 
+        `<div class="lb-item ${p.id === myId ? 'lb-me' : ''}">
+            <span>${p.name}</span>
+            <span>${p.kills}</span>
+        </div>`
+    ).join('');
+}
+
 let lastSend = 0;
 
 function update() {
@@ -159,12 +171,45 @@ function update() {
         }
     }
 
+    // Обновляем кулдауны локально (с сервера они приходят в state)
     for (let key in cooldowns) {
         if (cooldowns[key] > 0) {
             cooldowns[key] -= 1/60;
             if (cooldowns[key] < 0) cooldowns[key] = 0;
         }
     }
+}
+
+function drawCursor() {
+    // Рисуем курсор (мышь)
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(mouseX, mouseY, 8, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(mouseX - 12, mouseY);
+    ctx.lineTo(mouseX - 6, mouseY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(mouseX + 12, mouseY);
+    ctx.lineTo(mouseX + 6, mouseY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(mouseX, mouseY - 12);
+    ctx.lineTo(mouseX, mouseY - 6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(mouseX, mouseY + 12);
+    ctx.lineTo(mouseX, mouseY + 6);
+    ctx.stroke();
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.beginPath();
+    ctx.arc(mouseX, mouseY, 3, 0, Math.PI * 2);
+    ctx.fill();
 }
 
 function draw() {
@@ -207,6 +252,39 @@ function draw() {
 
     // projectiles
     for (let pr of projectiles) {
+        if (pr.type === 'laser_beam') {
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = '#ffdd44';
+            ctx.strokeStyle = 'rgba(255,220,80,0.8)';
+            ctx.lineWidth = pr.width || 30;
+            ctx.beginPath();
+            ctx.moveTo(pr.x, pr.y);
+            ctx.lineTo(pr.endX, pr.endY);
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,200,0.9)';
+            ctx.lineWidth = (pr.width || 30) * 0.3;
+            ctx.beginPath();
+            ctx.moveTo(pr.x, pr.y);
+            ctx.lineTo(pr.endX, pr.endY);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            continue;
+        }
+        
+        if (pr.type === 'blink_effect') {
+            ctx.shadowBlur = 40;
+            ctx.shadowColor = '#88ddff';
+            ctx.strokeStyle = 'rgba(136,221,255,0.5)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(pr.x, pr.y, pr.radius || 40, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(136,221,255,0.1)';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            continue;
+        }
+
         const isMine = pr.owner === myId;
         ctx.shadowBlur = 18;
         ctx.shadowColor = isMine ? '#d4b84c' : '#e06a4a';
@@ -215,17 +293,6 @@ function draw() {
         ctx.fillStyle = isMine ? '#e8c84a' : '#e06a4a';
         ctx.fill();
         ctx.shadowBlur = 0;
-        if (pr.type === 'laser') {
-            for (let i = 0; i < 3; i++) {
-                const a = i * 0.8 - 0.8;
-                ctx.beginPath();
-                ctx.moveTo(pr.x, pr.y);
-                ctx.lineTo(pr.x + Math.cos(a) * 45, pr.y + Math.sin(a) * 45);
-                ctx.strokeStyle = isMine ? 'rgba(220,200,80,0.25)' : 'rgba(220,100,70,0.25)';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
-        }
     }
 
     // players
@@ -281,6 +348,17 @@ function draw() {
             ctx.fill();
         }
 
+        if (p.rearming) {
+            ctx.fillStyle = 'rgba(255,200,80,0.3)';
+            ctx.beginPath();
+            ctx.arc(x, y, 28, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffcc44';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('REARM', x, y + 4);
+        }
+
         ctx.fillStyle = '#bccfd4';
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'center';
@@ -293,6 +371,8 @@ function draw() {
         ctx.fillStyle = hpPct > 0.5 ? '#68b868' : '#c86848';
         ctx.fillRect(x - hw/2, y - 26, hw * hpPct, hh);
     }
+
+    drawCursor();
 }
 
 function loop() {
