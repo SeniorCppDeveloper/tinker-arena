@@ -18,16 +18,22 @@
     </div>
 
     <div id="game" style="display:none;">
-        <div id="ui">
-            <div class="player-info">
-                <span id="myName">Вы</span>
-                <div class="hp-bar"><div id="myHp" class="hp-fill"></div></div>
-                <span id="myHpText">100/100</span>
+        <div id="topBar">
+            <div id="leaderboard">
+                <div class="lb-title">📊 ТАБЛИЦА</div>
+                <div id="leaderboardList"></div>
             </div>
-            <div class="player-info">
-                <span id="enemyName">Противник</span>
-                <div class="hp-bar"><div id="enemyHp" class="hp-fill"></div></div>
-                <span id="enemyHpText">100/100</span>
+            <div id="ui">
+                <div class="player-info">
+                    <span id="myName">Вы</span>
+                    <div class="hp-bar"><div id="myHp" class="hp-fill"></div></div>
+                    <span id="myHpText">100/100</span>
+                </div>
+                <div class="player-info">
+                    <span id="enemyName">Противник</span>
+                    <div class="hp-bar"><div id="enemyHp" class="hp-fill"></div></div>
+                    <span id="enemyHpText">100/100</span>
+                </div>
             </div>
         </div>
         <canvas id="arena" width="1000" height="650"></canvas>
