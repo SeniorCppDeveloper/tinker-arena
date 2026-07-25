@@ -16,6 +16,7 @@ app.get('/', (req, res) => {
 let players = {};
 let projectiles = [];
 let aoes = [];
+let particles = [];
 let nextId = 1;
 
 function broadcast() {
@@ -23,7 +24,8 @@ function broadcast() {
         type: 'state',
         players: players,
         projectiles: projectiles,
-        aoes: aoes
+        aoes: aoes,
+        particles: particles
     });
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
@@ -97,8 +99,8 @@ wss.on('connection', (ws) => {
                 if (player.cooldowns.z > 0) return;
                 player.cooldowns.z = 14;
                 
-                const targetX = data.x;
-                const targetY = data.y;
+                const targetX = Math.max(20, Math.min(980, data.x));
+                const targetY = Math.max(20, Math.min(630, data.y));
                 const dx = targetX - player.x;
                 const dy = targetY - player.y;
                 const dist = Math.hypot(dx, dy);
@@ -113,17 +115,58 @@ wss.on('connection', (ws) => {
                     newY = player.y + (dy / dist) * maxBlink;
                 }
                 
-                player.x = Math.max(20, Math.min(980, newX));
-                player.y = Math.max(20, Math.min(630, newY));
+                newX = Math.max(20, Math.min(980, newX));
+                newY = Math.max(20, Math.min(630, newY));
                 
-                projectiles.push({
-                    x: player.x,
-                    y: player.y,
-                    owner: id,
-                    life: 15,
-                    type: 'blink_effect',
-                    radius: 40
-                });
+                // Эффект блинка (начало)
+                for (let i = 0; i < 20; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 4;
+                    particles.push({
+                        x: player.x,
+                        y: player.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 20 + Math.random() * 20,
+                        maxLife: 40,
+                        color: '#88ddff',
+                        size: 3 + Math.random() * 5
+                    });
+                }
+                
+                player.x = newX;
+                player.y = newY;
+                
+                // Эффект блинка (конец)
+                for (let i = 0; i < 25; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 6;
+                    particles.push({
+                        x: player.x,
+                        y: player.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 20 + Math.random() * 25,
+                        maxLife: 45,
+                        color: '#88ddff',
+                        size: 3 + Math.random() * 6
+                    });
+                }
+                
+                // След блинка
+                for (let i = 0; i < 15; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    particles.push({
+                        x: player.x + Math.cos(angle) * 30,
+                        y: player.y + Math.sin(angle) * 30,
+                        vx: Math.cos(angle) * 1,
+                        vy: Math.sin(angle) * 1,
+                        life: 15 + Math.random() * 15,
+                        maxLife: 30,
+                        color: '#aaddff',
+                        size: 2 + Math.random() * 4
+                    });
+                }
                 
                 broadcast();
             }
@@ -236,11 +279,41 @@ wss.on('connection', (ws) => {
                     player.y += Math.sin(a) * 80;
                     player.x = Math.max(20, Math.min(980, player.x));
                     player.y = Math.max(20, Math.min(630, player.y));
+                    
+                    for (let i = 0; i < 30; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 1 + Math.random() * 3;
+                        particles.push({
+                            x: player.x,
+                            y: player.y,
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
+                            life: 15 + Math.random() * 20,
+                            maxLife: 35,
+                            color: '#66ddff',
+                            size: 2 + Math.random() * 4
+                        });
+                    }
                 }
 
                 if (skill === 'r') {
                     player.rearming = true;
                     player.rearmTime = 60;
+                    
+                    for (let i = 0; i < 40; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 1 + Math.random() * 5;
+                        particles.push({
+                            x: player.x + (Math.random() - 0.5) * 40,
+                            y: player.y + (Math.random() - 0.5) * 40,
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
+                            life: 20 + Math.random() * 30,
+                            maxLife: 50,
+                            color: '#ffcc44',
+                            size: 2 + Math.random() * 5
+                        });
+                    }
                 }
 
                 if (skill === 'x') {
@@ -253,6 +326,21 @@ wss.on('connection', (ws) => {
                         life: 50,
                         type: 'shiva'
                     });
+                    
+                    for (let i = 0; i < 50; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = Math.random() * 180;
+                        particles.push({
+                            x: player.x + Math.cos(angle) * dist,
+                            y: player.y + Math.sin(angle) * dist,
+                            vx: Math.cos(angle) * (2 + Math.random() * 3),
+                            vy: Math.sin(angle) * (2 + Math.random() * 3),
+                            life: 20 + Math.random() * 30,
+                            maxLife: 50,
+                            color: '#88ddff',
+                            size: 3 + Math.random() * 6
+                        });
+                    }
                 }
 
                 broadcast();
@@ -293,7 +381,7 @@ setInterval(() => {
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const pr = projectiles[i];
         
-        if (pr.type === 'laser_beam' || pr.type === 'blink_effect') {
+        if (pr.type === 'laser_beam') {
             pr.life--;
             if (pr.life <= 0) {
                 projectiles.splice(i, 1);
@@ -342,6 +430,22 @@ setInterval(() => {
                     p.x = spawn.x;
                     p.y = spawn.y;
                     p.shieldHp = 0;
+                    
+                    // Эффект смерти
+                    for (let j = 0; j < 40; j++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 2 + Math.random() * 6;
+                        particles.push({
+                            x: p.x,
+                            y: p.y,
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
+                            life: 20 + Math.random() * 30,
+                            maxLife: 50,
+                            color: '#ff4444',
+                            size: 3 + Math.random() * 8
+                        });
+                    }
                 }
                 hit = true;
                 break;
@@ -383,9 +487,22 @@ setInterval(() => {
         }
     }
 
+    // Обновление частиц
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx *= 0.97;
+        p.vy *= 0.97;
+        p.life--;
+        if (p.life <= 0) {
+            particles.splice(i, 1);
+        }
+    }
+
     broadcast();
 }, 1000 / 60);
 
 server.listen(PORT, '0.0.0.0', () => {
-    console.log('Сервер запущен на порту ' + PORT);
+    console.log('🔥 Сервер запущен на порту ' + PORT);
 });
